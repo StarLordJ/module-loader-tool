@@ -1,0 +1,24 @@
+{
+  "name": "module-loader-tool",
+  "version": "0.0.1",
+  "description": "Module loader tool for dynamic load UMD modules",
+  "keywords": [
+    "umd",
+    "dynamic",
+    "import"
+  ],
+  "main": "./bundles/index.umd.js",
+  "module": "./esm5/index.js",
+  "es2015": "./esm2015/index.js",
+  "typings": "./types/index.d.ts",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SoEasy/module-loader-tool"
+  },
+  "author": "Vladimir Sannikov <vhaldemario@gmail.com>",
+  "license": "MIT",
+  "peerDependencies": {
+    "tslib": ">=1.9.0"
+  }
+}
