@@ -34,9 +34,10 @@ function compileSource(source: string, dependencies: ModuleDependencies): Compil
       // в) Вкомпилировать зависимость в микросервис
       throw new NoDependencyError(`Dependency "${name}" does not provided by core application`);
     }
+
     return dependency;
   };
-
+  const exports = {};
   const module = {
     exports: {}
   };

@@ -1,10 +1,15 @@
-export class NoDependencyError extends Error {}
+export class NoDependencyError extends Error {
+}
 // tslint:disable-next-line
-export class CompileModuleError extends Error {}
+export class CompileModuleError extends Error {
+}
 // tslint:disable-next-line
-export class CreationModuleError extends Error {}
+export class CreationModuleError extends Error {
+}
 // tslint:disable-next-line
-export class LoadBundleError extends Error {}
+export class LoadBundleError extends Error {
+}
 // tslint:disable-next-line
-export class PostprocessorError extends Error {}
+export class PostprocessorError extends Error {
+}
 //# sourceMappingURL=errors.js.map
