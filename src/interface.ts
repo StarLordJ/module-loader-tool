@@ -20,16 +20,11 @@ export interface IModuleLoaderEntrypoint<T extends IBaseModuleManifest> {
 export type ModuleDependencies = Record<string, object>;
 export type ModuleUrlFormatter<T extends IBaseModuleManifest> = (manifest: T) => string;
 
-export type CompiledModuleControls = {
-  start?: () => void;
-  getComponent?: () => React.ComponentClass;
-};
-
-export type CompiledModule = {
+// tslint:disable-next-line
+export type CompiledModule<T = any> = {
   exports: {
-    controls: CompiledModuleControls;
-    [key: string]: object;
-  };
+    start?: () => void;
+  } & T;
 };
 
 export type TypeMatcher<T> = (manifest: T) => boolean;

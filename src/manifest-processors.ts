@@ -13,6 +13,7 @@ export class ManifestProcessors<TModuleManifest extends IBaseModuleManifest> {
       }
     }
     console.warn(`Cant resolve type of service "${manifest.name}"`);
+
     return;
   }
 
@@ -32,20 +33,22 @@ export class ManifestProcessors<TModuleManifest extends IBaseModuleManifest> {
   }
 
   runPreprocessor(manifest: TModuleManifest): Promise<void> {
-    const type = this.getModuleTypeByManifest(manifest);
-    if (!type) {
+    const moduleType = this.getModuleTypeByManifest(manifest);
+    if (!moduleType) {
       return Promise.resolve();
     }
 
-    return this.modulePreprocessors[type] ? this.modulePreprocessors[type](manifest) : Promise.resolve();
+    return this.modulePreprocessors[moduleType] ? this.modulePreprocessors[moduleType](manifest) : Promise.resolve();
   }
 
   runPostprocessor(manifest: TModuleManifest, module: CompiledModule): Promise<void> {
-    const type = this.getModuleTypeByManifest(manifest);
-    if (!type) {
+    const moduleType = this.getModuleTypeByManifest(manifest);
+    if (!moduleType) {
       return Promise.resolve();
     }
 
-    return this.modulePostprocessors[type] ? this.modulePostprocessors[type](manifest, module) : Promise.resolve();
+    return this.modulePostprocessors[moduleType]
+      ? this.modulePostprocessors[moduleType](manifest, module)
+      : Promise.resolve();
   }
 }
