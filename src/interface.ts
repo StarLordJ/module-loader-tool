@@ -28,5 +28,5 @@ export type CompiledModule<T = any> = {
 };
 
 export type TypeMatcher<T> = (manifest: T) => boolean;
-export type ModulePreprocessor<T> = (manifest: T) => Promise<void>;
-export type ModulePostprocessor<T> = (manifest: T, module: CompiledModule) => Promise<void>;
+export type ModulePreprocessor<T> = (manifest: T) => Promise<void> | Promise<never> | void;
+export type ModulePostprocessor<T> = (manifest: T, module: CompiledModule) => Promise<void> | Promise<never> | void;

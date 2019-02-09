@@ -112,13 +112,42 @@ export class ModuleLoaderTool<TModuleManifest extends IBaseModuleManifest> {
     this.entrypoint = entrypoint;
   }
 
-  defineManifestType(
-    type: string,
+  /**
+   * Метод регистрирует препроцессор вашего модуля. Препроцессоров может быть много.
+   * В препроцессоре можно исполнить какую-нибудь логику до загрузки сервиса или принять решение его не загружать.
+   * Пример использования - начать параллельную загрузку css, который нужен модулю.
+   * Препроцессор может предотвратить загрузку сервиса вернув Promise.reject()
+   * Все препроцессоры будут запущены по очереди, синхронные будут обернуты в промисы и все это завернется в Promise.all
+   * После отработки всех препроцессоров, если итоговый промис не будет реджектнут - начнется загрузка сервиса
+   * Есть какой-то промис реджектнется - будет сообщение в консоли
+   * @param typeMatcher
+   * @param processor
+   * @param modulePostprocessor
+   */
+  definePreprocessor(
     typeMatcher: (manifest: TModuleManifest) => boolean,
-    modulePreprocessor?: (manifest: TModuleManifest) => Promise<void>,
-    modulePostprocessor?: (manifest: TModuleManifest, module: CompiledModule) => Promise<void>
+    processor: (manifest: TModuleManifest) => void | Promise<void>
   ): void {
-    this.manifestProcessors.registerManifestType(type, typeMatcher, modulePreprocessor, modulePostprocessor);
+    this.manifestProcessors.registerPreprocessor(typeMatcher, processor);
+  }
+
+  /**
+   * Метод регистрирует пострпроцессор для обработки загруженного модуля. Постпроцессоров может быть много.
+   * В постпроцессоре можно вызвать что-нибудь из экспортов вашего модуля, можно что-нибудь оттуда достать.
+   * Постпроцессор может быть синхронным(не возвращает ничего) и может быть асинхронным(возвращает промис)
+   * Все постпроцессоры будут запущены по очереди, синхронные будут обернуты в промисы и все это завернется в
+   * Promise.all
+   * После отработки всех постпроцессоров поток управления возвращается mlt, который передает управление вам и
+   * возвращает CompiledModule
+   * @param typeMatcher - функция-матчер, на вход получит ваш манифест, на выход даст boolean, запускать
+   * постпроцессор или нет
+   * @param processor - процессор вашего модуля после его загрузки. Вы получаете доступ к экспортам этого модуля
+   */
+  definePostprocessor(
+    typeMatcher: (manifest: TModuleManifest) => boolean,
+    processor: (manifest: TModuleManifest, module: CompiledModule) => void | Promise<void>
+  ): void {
+    this.manifestProcessors.registerPostprocessor(typeMatcher, processor);
   }
 
   /**
@@ -192,14 +221,14 @@ export class ModuleLoaderTool<TModuleManifest extends IBaseModuleManifest> {
     const serviceFileUrl = this.urlFormatter(manifest);
 
     this.loadersCache[manifest.name] = this.manifestProcessors
-      .runPreprocessor(manifest)
+      .runPreprocessors(manifest)
       .then(() => fetchBundleSource(serviceFileUrl))
       .then((source: string) => compileSource(source, this.dependencies, this.unknownDependencyResolver))
       .then((compiledModule: CompiledModule) => {
         this.bundlesCache[manifest.name] = compiledModule;
 
         return this.manifestProcessors
-          .runPostprocessor(manifest, compiledModule)
+          .runPostprocessors(manifest, compiledModule)
           .then(() => compiledModule)
           .catch(() => {
             throw new PostprocessorError('Postprocessor crashed');

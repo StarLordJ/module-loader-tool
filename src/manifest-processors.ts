@@ -1,54 +1,78 @@
 import { CompiledModule, IBaseModuleManifest, ModulePostprocessor, ModulePreprocessor, TypeMatcher } from './interface';
 
 export class ManifestProcessors<TModuleManifest extends IBaseModuleManifest> {
-  private typeMatchers: Record<string, TypeMatcher<TModuleManifest>> = {};
-  private modulePreprocessors: Record<string, ModulePreprocessor<TModuleManifest>> = {};
-  private modulePostprocessors: Record<string, ModulePostprocessor<TModuleManifest>> = {};
+  private preprocessorMatchers: Array<TypeMatcher<TModuleManifest>> = [];
+  private preprocessors: Map<TypeMatcher<TModuleManifest>, ModulePreprocessor<TModuleManifest>> = new Map();
 
-  private getModuleTypeByManifest(manifest: TModuleManifest): string | void {
-    for (const typeKey of Object.keys(this.typeMatchers)) {
-      const typeMatcher = this.typeMatchers[typeKey];
-      if (typeMatcher(manifest)) {
-        return typeKey;
-      }
-    }
-    console.warn(`Cant resolve type of service "${manifest.name}"`);
+  private postprocessorMatchers: Array<TypeMatcher<TModuleManifest>> = [];
+  private postprocessors: Map<TypeMatcher<TModuleManifest>, ModulePostprocessor<TModuleManifest>> = new Map();
 
-    return;
-  }
-
-  registerManifestType(
-    type: string,
+  registerPreprocessor(
     typeMatcher: TypeMatcher<TModuleManifest>,
-    modulePreprocessor?: ModulePreprocessor<TModuleManifest>,
-    modulePostprocessor?: ModulePostprocessor<TModuleManifest>
+    processor: ModulePreprocessor<TModuleManifest>
   ): void {
-    this.typeMatchers[type] = typeMatcher;
-    if (modulePreprocessor) {
-      this.modulePreprocessors[type] = modulePreprocessor;
-    }
-    if (modulePostprocessor) {
-      this.modulePostprocessors[type] = modulePostprocessor;
-    }
+    this.preprocessors.set(typeMatcher, processor);
+    this.preprocessorMatchers.push(typeMatcher);
   }
 
-  runPreprocessor(manifest: TModuleManifest): Promise<void> {
-    const moduleType = this.getModuleTypeByManifest(manifest);
-    if (!moduleType) {
-      return Promise.resolve();
-    }
-
-    return this.modulePreprocessors[moduleType] ? this.modulePreprocessors[moduleType](manifest) : Promise.resolve();
+  registerPostprocessor(
+    typeMatcher: TypeMatcher<TModuleManifest>,
+    processor: ModulePostprocessor<TModuleManifest>
+  ): void {
+    this.postprocessors.set(typeMatcher, processor);
+    this.postprocessorMatchers.push(typeMatcher);
   }
 
-  runPostprocessor(manifest: TModuleManifest, module: CompiledModule): Promise<void> {
-    const moduleType = this.getModuleTypeByManifest(manifest);
-    if (!moduleType) {
-      return Promise.resolve();
-    }
+  runPreprocessors(manifest: TModuleManifest): Promise<void> {
+    const selectedMatchers = this.preprocessorMatchers.filter(
+      (matcher: TypeMatcher<TModuleManifest>) => matcher(manifest)
+    );
 
-    return this.modulePostprocessors[moduleType]
-      ? this.modulePostprocessors[moduleType](manifest, module)
-      : Promise.resolve();
+    const preprocessors = selectedMatchers.map(
+      // tslint:disable-next-line
+      (matcher: TypeMatcher<TModuleManifest>) => this.preprocessors.get(matcher)!
+    );
+
+    return Promise.all(
+      preprocessors.map(
+        (processor: ModulePreprocessor<TModuleManifest>) => {
+          if (!processor) { return Promise.resolve(); }
+
+          // tslint:disable-next-line
+          return new Promise<void>((resolve: (result: any) => void): void => {
+            resolve(processor(manifest));
+          });
+        }
+      )
+    ).then(
+      () => {}
+    );
+  }
+
+  runPostprocessors(manifest: TModuleManifest, compiledModule: CompiledModule): Promise<void> {
+    // Чесслово, я больше с типизацией провожусь, чем полезног кода напишу
+    const selectedMatchers = this.postprocessorMatchers.filter(
+      (matcher: TypeMatcher<TModuleManifest>) => matcher(manifest)
+    );
+
+    const postprocessors = selectedMatchers.map(
+      // tslint:disable-next-line
+      (matcher: TypeMatcher<TModuleManifest>) => this.postprocessors.get(matcher)!
+    );
+
+    return Promise.all(
+      postprocessors.map(
+        (processor: ModulePostprocessor<TModuleManifest>) => {
+          if (!processor) { return Promise.resolve(); }
+
+          // tslint:disable-next-line
+          return new Promise<void>((resolve: (result: any) => void): void => {
+            resolve(processor(manifest, compiledModule));
+          });
+        }
+      )
+    ).then(
+      () => {}
+    );
   }
 }
