@@ -1,3 +1,5 @@
+import { BehaviorSubject, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { CompileModuleError, LoadBundleError, NoDependencyError, PostprocessorError } from './errors';
 import {
   CompiledModule,
@@ -70,6 +72,8 @@ export class ModuleLoaderTool<TModuleManifest extends IBaseModuleManifest> {
 
   private manifestProcessors: ManifestProcessors<TModuleManifest> = new ManifestProcessors();
   private bundlesList: Array<TModuleManifest>;
+  // @ts-ignore TS считает, что пустой массив низя приводить к массиву элементов
+  private bundlesListStream$: BehaviorSubject<Array<TModuleManifest>> = new BehaviorSubject([]);
   private bundlesCache: Record<string, CompiledModule> = {};
   private loadersCache: Record<string, Promise<CompiledModule | void>> = {};
 
@@ -94,6 +98,11 @@ export class ModuleLoaderTool<TModuleManifest extends IBaseModuleManifest> {
         }
       });
     });
+  }
+
+  private setBundlesList(list: Array<TModuleManifest>): void {
+    this.bundlesList = list;
+    this.bundlesListStream$.next(list);
   }
 
   defineDependencies(dependencies: ModuleDependencies): void {
@@ -176,12 +185,12 @@ export class ModuleLoaderTool<TModuleManifest extends IBaseModuleManifest> {
           const loadedBundles = flattener ? flattener(bundlesObj) : bundlesObj;
 
           if (!filterFn) {
-            this.bundlesList = loadedBundles;
+            this.setBundlesList(loadedBundles);
 
             return;
           }
 
-          this.bundlesList = loadedBundles.filter(filterFn);
+          this.setBundlesList(loadedBundles.filter(filterFn));
         }
       )
       .then(() =>
@@ -259,11 +268,26 @@ export class ModuleLoaderTool<TModuleManifest extends IBaseModuleManifest> {
   }
 
   /**
-   * Способ отфильтровать нужные бандлы без прямого доступа к бандлам
+   * Синхронный способ отфильтровать нужные бандлы без прямого доступа к бандлам
    * @param fn - фильтрующая функция
    */
   filter(fn: (bundle: TModuleManifest) => boolean): Array<TModuleManifest> {
     return this.bundlesList.filter(fn);
+  }
+
+  /**
+   * Потоковый способ отфильтровать нужные бандлы и получать их в процессе изменения(нужно при разработке)
+   *
+   * @param fn - фильрующая функция
+   */
+  subscribe(fn?: (bundle: TModuleManifest) => boolean): Observable<Array<TModuleManifest>> {
+    const filterFn = (bundle: TModuleManifest): boolean => {
+      return fn ? fn(bundle) : true;
+    };
+
+    return this.bundlesListStream$.pipe(
+      map((bundles: Array<TModuleManifest>): Array<TModuleManifest> => bundles.filter(filterFn))
+    );
   }
 
   /**
@@ -273,6 +297,8 @@ export class ModuleLoaderTool<TModuleManifest extends IBaseModuleManifest> {
    */
   manuallyDefineBundle(manifest: TModuleManifest, bundle: CompiledModule): void {
     this.bundlesList.push(manifest);
+    this.setBundlesList(this.bundlesList);
+
     if (this.bundlesCache[manifest.name]) {
       throw new Error(`Manifest with name "${manifest.name}" already defined, break;`);
     }
