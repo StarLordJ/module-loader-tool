@@ -298,6 +298,9 @@ export class ModuleLoaderTool<TModuleManifest extends IBaseModuleManifest> {
   manuallyDefineBundle(manifest: TModuleManifest, bundle: CompiledModule): void {
     this.bundlesList.push(manifest);
     this.setBundlesList(this.bundlesList);
+    if (bundle.exports.start) {
+      bundle.exports.start();
+    }
 
     if (this.bundlesCache[manifest.name]) {
       throw new Error(`Manifest with name "${manifest.name}" already defined, break;`);
