@@ -24,8 +24,8 @@ export class ManifestProcessors<TModuleManifest extends IBaseModuleManifest> {
   }
 
   runPreprocessors(manifest: TModuleManifest): Promise<void> {
-    const selectedMatchers = this.preprocessorMatchers.filter(
-      (matcher: TypeMatcher<TModuleManifest>) => matcher(manifest)
+    const selectedMatchers = this.preprocessorMatchers.filter((matcher: TypeMatcher<TModuleManifest>) =>
+      matcher(manifest)
     );
 
     const preprocessors = selectedMatchers.map(
@@ -34,25 +34,25 @@ export class ManifestProcessors<TModuleManifest extends IBaseModuleManifest> {
     );
 
     return Promise.all(
-      preprocessors.map(
-        (processor: ModulePreprocessor<TModuleManifest>) => {
-          if (!processor) { return Promise.resolve(); }
-
-          // tslint:disable-next-line
-          return new Promise<void>((resolve: (result: any) => void): void => {
-            resolve(processor(manifest));
-          });
+      preprocessors.map((processor: ModulePreprocessor<TModuleManifest>) => {
+        if (!processor) {
+          return Promise.resolve();
         }
-      )
-    ).then(
-      () => {}
-    );
+
+        // tslint:disable-next-line
+        return new Promise<void>(
+          (resolve: (result: any) => void): void => {
+            resolve(processor(manifest));
+          }
+        );
+      })
+    ).then(() => {});
   }
 
   runPostprocessors(manifest: TModuleManifest, compiledModule: CompiledModule): Promise<void> {
     // Чесслово, я больше с типизацией провожусь, чем полезног кода напишу
-    const selectedMatchers = this.postprocessorMatchers.filter(
-      (matcher: TypeMatcher<TModuleManifest>) => matcher(manifest)
+    const selectedMatchers = this.postprocessorMatchers.filter((matcher: TypeMatcher<TModuleManifest>) =>
+      matcher(manifest)
     );
 
     const postprocessors = selectedMatchers.map(
@@ -61,18 +61,18 @@ export class ManifestProcessors<TModuleManifest extends IBaseModuleManifest> {
     );
 
     return Promise.all(
-      postprocessors.map(
-        (processor: ModulePostprocessor<TModuleManifest>) => {
-          if (!processor) { return Promise.resolve(); }
-
-          // tslint:disable-next-line
-          return new Promise<void>((resolve: (result: any) => void): void => {
-            resolve(processor(manifest, compiledModule));
-          });
+      postprocessors.map((processor: ModulePostprocessor<TModuleManifest>) => {
+        if (!processor) {
+          return Promise.resolve();
         }
-      )
-    ).then(
-      () => {}
-    );
+
+        // tslint:disable-next-line
+        return new Promise<void>(
+          (resolve: (result: any) => void): void => {
+            resolve(processor(manifest, compiledModule));
+          }
+        );
+      })
+    ).then(() => {});
   }
 }
