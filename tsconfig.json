@@ -19,7 +19,8 @@
     "outDir": "dist/esm5",
     "resolveJsonModule": true,
     "importHelpers": true,
-    "strictPropertyInitialization": false
+    "strictPropertyInitialization": false,
+    "skipLibCheck": true
   },
   "include": [
     "./src"
