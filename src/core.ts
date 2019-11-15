@@ -28,7 +28,9 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
   }
 
   saveCompiledBundle(compiledBundle: TCompiledMonad<TUserManifest>): void {
-    const { manifest: { name: manifestName } } = compiledBundle;
+    const {
+      manifest: { name: manifestName }
+    } = compiledBundle;
     this.cache[manifestName] = Promise.resolve(compiledBundle);
   }
 
@@ -47,10 +49,11 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
 
     if (module.exports && module.exports.getModuleDependencies) {
       const moduleDependencies = module.exports.getModuleDependencies() || {};
-      Object.keys(moduleDependencies).forEach(
-        (dependencyKey: string) => this.dependenciesManager.installDependency(
+      Object.keys(moduleDependencies).forEach((dependencyKey: string) =>
+        this.dependenciesManager.installDependency(
           // @ts-ignore
-          dependencyKey, moduleDependencies[dependencyKey]
+          dependencyKey,
+          moduleDependencies[dependencyKey]
         )
       );
     }
@@ -59,16 +62,23 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
   loadAndCompileBundle(manifest: TUserManifest): Promise<TCompiledMonad<TUserManifest>> {
     const manifestName = manifest.name;
     if (!this.cache[manifestName]) {
-      this.cache[manifestName] = this.loader.loadSource(manifest).then(
-        (sourceMonad: TSourceMonad<TUserManifest>) => this.compiler.compile(sourceMonad, this.dependenciesManager)
-      ).then(
-        // @ts-ignore
-        (compiledMonad: TCompiledMonad<TUserManifest>) => {
-          this.startCompiledBundle(compiledMonad);
+      this.cache[manifestName] = this.config.processorsManager
+        .runPreprocessors(manifest)
+        .then(() => this.loader.loadSource(manifest))
+        .then((sourceMonad: TSourceMonad<TUserManifest>) =>
+          this.config.processorsManager.runSourcePreprocessors(sourceMonad)
+        )
+        .then((sourceMonad: TSourceMonad<TUserManifest>) =>
+          this.compiler.compile(sourceMonad, this.dependenciesManager)
+        )
+        .then(
+          // @ts-ignore
+          (compiledMonad: TCompiledMonad<TUserManifest>) => {
+            this.startCompiledBundle(compiledMonad);
 
-          return compiledMonad;
-        }
-      );
+            return this.config.processorsManager.runPostprocessors(compiledMonad).then(() => compiledMonad);
+          }
+        );
     }
 
     return this.cache[manifestName];
@@ -80,12 +90,10 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
    * @param manifests
    */
   bulkLoadBundles(manifests: Array<TUserManifest>): Promise<void> {
-    return Promise.all(
-      manifests.map((manifest: TUserManifest) => this.loadAndCompileBundle(manifest))
-    ).then(() => {}).catch(
-      (error: Error) => {
+    return Promise.all(manifests.map((manifest: TUserManifest) => this.loadAndCompileBundle(manifest)))
+      .then(() => {})
+      .catch((error: Error) => {
         console.error('Это случилось, ошибка при bulkLoadBundles где-то выше');
-      }
-    );
+      });
   }
 }

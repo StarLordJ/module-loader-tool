@@ -30,7 +30,7 @@ export class ModuleLoaderTool<TUserManifest extends TBaseModuleManifest> {
     return this.core.loadAndCompileBundle(manifest);
   }
 
-  filterBundles(filterFn: (manifest: TUserManifest) => boolean): Array<TUserManifest> {
+  filter(filterFn: (manifest: TUserManifest) => boolean): Array<TUserManifest> {
     return this.bundlesManager.filterBundles(filterFn);
   }
 
@@ -60,23 +60,19 @@ export class ModuleLoaderTool<TUserManifest extends TBaseModuleManifest> {
   }
 
   init(filterFn?: (m: TUserManifest) => boolean): Promise<void> {
-    return this.bundlesManager.loadRootManifest().then(
-      (bundlesList: Array<TUserManifest>) => bundlesList.filter(filterFn ? filterFn : (): boolean => true)
-    ).then(
-      (filteredBundlesList: Array<TUserManifest>) => this.bundlesManager.setBundlesList(filteredBundlesList)
-    ).then(
-      () => this.loadBlockBundles()
-    );
+    return this.bundlesManager
+      .loadRootManifest()
+      .then((bundlesList: Array<TUserManifest>) => bundlesList.filter(filterFn ? filterFn : (): boolean => true))
+      .then((filteredBundlesList: Array<TUserManifest>) => this.bundlesManager.setBundlesList(filteredBundlesList))
+      .then(() => this.loadBlockBundles());
   }
 
   // tslint:disable-next-line:no-any
   start(runner: (...args: Array<any>) => any): Promise<void> {
     // Run and next load immediately services
-    return Promise.resolve().then(
-      () => runner()
-    ).then(
-      () => this.loadImmediatelyBundles()
-    );
+    return Promise.resolve()
+      .then(() => runner())
+      .then(() => this.loadImmediatelyBundles());
   }
 
   manuallyDefineBundle(
@@ -113,7 +109,5 @@ export class ModuleLoaderTool<TUserManifest extends TBaseModuleManifest> {
   /**
    * Ручка, которую стоит дернуть при готовности грузить lazy-модули
    */
-  reportReadyToLazy(): void {
-
-  }
+  reportReadyToLazy(): void {}
 }
