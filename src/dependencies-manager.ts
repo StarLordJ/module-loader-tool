@@ -62,6 +62,6 @@ export class MLTDependenciesManager {
       return dependency;
     }
 
-    return throwDependencyAlreadyInstalled(dependencyName);
+    return throwNoDependencyInstalled(dependencyName);
   }
 }

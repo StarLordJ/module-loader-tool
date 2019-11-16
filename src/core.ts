@@ -53,6 +53,7 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
         this.dependenciesManager.installDependency(
           // @ts-ignore
           dependencyKey,
+          // @ts-ignore
           moduleDependencies[dependencyKey]
         )
       );
@@ -93,7 +94,7 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
     return Promise.all(manifests.map((manifest: TUserManifest) => this.loadAndCompileBundle(manifest)))
       .then(() => {})
       .catch((error: Error) => {
-        console.error('Это случилось, ошибка при bulkLoadBundles где-то выше');
+        console.error('Это случилось, ошибка при bulkLoadBundles где-то выше', error);
       });
   }
 }
