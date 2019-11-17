@@ -1,10 +1,15 @@
 import { MLTDependenciesManager } from './dependencies-manager';
 import { TBaseModuleManifest, TCompiledModule, TCompiledMonad, TCompileFn, TSourceMonad } from './types';
 
-function defaultCompileFn(
-  sourceCode: string,
+function defaultCompileFn<TUserManifest extends TBaseModuleManifest>(
+  sourceMonad: TSourceMonad<TUserManifest>,
   dependenciesManager: MLTDependenciesManager
 ): Promise<TCompiledModule> {
+  const { manifest, source: sourceCode } = sourceMonad;
+  if (!sourceCode) {
+    return Promise.reject(new Error(`No source code passed into compiler for module "${manifest.name}"`));
+  }
+
   const require = dependenciesManager.retrieveDependencyByName;
 
   // TODO поставить сеттеры, чтобы понимать, куда компилированный модуль положил данные - чистый там UMD или вебпак
@@ -18,17 +23,17 @@ function defaultCompileFn(
     // tslint:disable-next-line
     eval(sourceCode);
   } catch (ex) {
-    throw new Error(`Cant compile module: ${ ex.message }`);
+    return Promise.reject(Error(`Cant compile module "${manifest.name}": ${ ex.message }`));
   }
 
   return Promise.resolve(module);
 }
 
 export class MLTCompiler<TUserManifest extends TBaseModuleManifest> {
-  private compileFn: TCompileFn = defaultCompileFn;
+  private compileFn: TCompileFn<TUserManifest> = defaultCompileFn;
   private notCompiledBundles: Array<string> = [];
 
-  defineCompileFn = <T>(compileFn: TCompileFn<T>): void => {
+  defineCompileFn = <T>(compileFn: TCompileFn<TUserManifest, T>): void => {
     this.compileFn = compileFn;
   };
 
@@ -52,7 +57,7 @@ export class MLTCompiler<TUserManifest extends TBaseModuleManifest> {
       });
     }
 
-    return this.compileFn(sourceMonad.source, dependenciesManager).catch(
+    return this.compileFn(sourceMonad, dependenciesManager).catch(
       (error: Error) => {
         console.error('Cant compile bundle', sourceMonad.manifest, 'error:', error);
         this.notCompiledBundles.push(sourceMonad.manifest.name);

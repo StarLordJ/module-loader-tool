@@ -48,6 +48,7 @@ export class MLTBundlesManager<TUserManifest extends TBaseModuleManifest> {
 
     Object.keys(modules).forEach((moduleName: string) => {
       const module = modules[moduleName];
+      module.name = moduleName;
       const moduleManifest = combineModuleAndRootManifest<TUserManifest>(
         rawManifest as TUserManifest,
         module as TUserManifest

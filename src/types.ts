@@ -62,7 +62,7 @@ export type TFormatUrlFn<TUserManifest extends TBaseModuleManifest> = (module: T
 export type TLoadSourceFn = (url: string) => Promise<string>;
 
 // tslint:disable-next-line:no-any
-export type TCompileFn<T = {}> = (sourceCode: string, ...args: Array<any>) => Promise<TCompiledModule<T>>;
+export type TCompileFn<U, T = {}> = (sourceMonad: TSourceMonad<U>, ...args: Array<any>) => Promise<TCompiledModule<T>>;
 
 export type TSearchModuleResult<T extends TBaseModuleManifest = never> = (
   { manifest: T } & (
@@ -112,5 +112,5 @@ export type TMltConfig<TUserManifest extends TBaseModuleManifest> = {
   urlFormatter: TFormatUrlFn<TUserManifest>;
   loadSourceFn?: TLoadSourceFn;
 
-  compileFn?: TCompileFn;
+  compileFn?: TCompileFn<TUserManifest>;
 };
