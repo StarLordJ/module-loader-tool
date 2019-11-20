@@ -34,6 +34,10 @@ export class ModuleLoaderTool<TUserManifest extends TBaseModuleManifest> {
     return this.bundlesManager.filterBundles(filterFn);
   }
 
+  isBundleLoaded(manifest: TUserManifest): boolean {
+    return this.core.hasCompiledBundle(this.searchBundleManifest(manifest.name));
+  }
+
   startupCheck(): void {
     const startupCheckErrors = this.config.startupCheck();
     if (startupCheckErrors) {
