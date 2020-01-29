@@ -10,7 +10,7 @@ function defaultCompileFn<TUserManifest extends TBaseModuleManifest>(
     return Promise.reject(new Error(`No source code passed into compiler for module "${manifest.name}"`));
   }
 
-  const require = dependenciesManager.retrieveDependencyByName;
+  const require = dependenciesManager.retrieveDependencyByName.bind(dependenciesManager, sourceMonad.manifest);
 
   // TODO поставить сеттеры, чтобы понимать, куда компилированный модуль положил данные - чистый там UMD или вебпак
   const exports = {};
@@ -20,7 +20,7 @@ function defaultCompileFn<TUserManifest extends TBaseModuleManifest>(
   };
 
   try {
-    const $$manifestName: string = sourceMonad.manifest.name;
+    const $$manifest: TUserManifest = manifest;
     // tslint:disable-next-line
     eval(sourceCode);
   } catch (ex) {

@@ -1,16 +1,12 @@
 import { MLTConfig } from './config';
-import { TModuleDependencies, TUnknownDependencyResolver } from './types';
+import { TBaseModuleManifest, TModuleDependencies, TUnknownDependencyResolver } from './types';
 
 function throwNoDependencyInstalled(dependencyName: string): never {
-  throw new Error(
-    `Dependency "${dependencyName}" is not provided to MLTDependenciesManager`
-  );
+  throw new Error(`Dependency "${dependencyName}" is not provided to MLTDependenciesManager`);
 }
 
 function throwDependencyAlreadyInstalled(dependencyName: string): never {
-  throw new Error(
-    `Dependency "${dependencyName}" already installed. Check your code logic`
-  );
+  throw new Error(`Dependency "${dependencyName}" already installed. Check your code logic`);
 }
 
 export class MLTDependenciesManager {
@@ -47,7 +43,11 @@ export class MLTDependenciesManager {
     return this;
   };
 
-  retrieveDependencyByName = (dependencyName: string): object => {
+  /**
+   * Получить зависимость из функции require
+   * @internal
+   */
+  retrieveDependencyByName = (manifest: TBaseModuleManifest, dependencyName: string): object => {
     if (this.dependencies[dependencyName]) {
       return this.dependencies[dependencyName];
     }
@@ -56,12 +56,12 @@ export class MLTDependenciesManager {
       return throwNoDependencyInstalled(dependencyName);
     }
 
-    const dependency = this.unknownResolver(dependencyName);
+    const dependency = this.unknownResolver(dependencyName, manifest);
 
     if (dependency) {
       return dependency;
     }
 
     return throwNoDependencyInstalled(dependencyName);
-  }
+  };
 }

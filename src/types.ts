@@ -48,14 +48,14 @@ export type TBaseModuleManifest<TUserAddition = {}, TChild = {}> = {
   loadStrategy: ModuleLoadStrategy;
   fileName: string;
   childs?: Array<TChild>;
-  modules?: Record<string, TBaseModuleManifest<TUserAddition>>
+  modules?: Record<string, TBaseModuleManifest<TUserAddition>>;
 } & TUserAddition;
 
 export type TManifestFlattener<T extends TBaseModuleManifest = never> = (manifestObject: object) => Array<T>;
 
 export type TModuleDependencies = Record<string, object>;
 
-export type TUnknownDependencyResolver = (name: string) => object | void;
+export type TUnknownDependencyResolver = (dependencyName: string, manifest?: TBaseModuleManifest) => object | void;
 
 export type TFormatUrlFn<TUserManifest extends TBaseModuleManifest> = (module: TUserManifest) => string;
 
@@ -64,12 +64,9 @@ export type TLoadSourceFn = (url: string) => Promise<string>;
 // tslint:disable-next-line:no-any
 export type TCompileFn<U, T = {}> = (sourceMonad: TSourceMonad<U>, ...args: Array<any>) => Promise<TCompiledModule<T>>;
 
-export type TSearchModuleResult<T extends TBaseModuleManifest = never> = (
-  { manifest: T } & (
-    | { type: ModuleSearchType.MODULE }
-    | { type: ModuleSearchType.CHILD, childName: string }
-  )
-) | void;
+export type TSearchModuleResult<T extends TBaseModuleManifest = never> =
+  | ({ manifest: T } & ({ type: ModuleSearchType.MODULE } | { type: ModuleSearchType.CHILD; childName: string }))
+  | void;
 
 export type TCompiledModule<T = {}> = {
   exports: {
@@ -97,10 +94,12 @@ type TProcessorResult = Promise<void> | Promise<never> | void;
 export type TTypeMatcher<T extends TBaseModuleManifest> = (manifest: T) => boolean;
 export type TTypeMatcherWithSource<T extends TBaseModuleManifest> = (sourceMonad: TSourceMonad<T>) => boolean;
 export type TModulePreprocessor<T extends TBaseModuleManifest> = (manifest: T) => TProcessorResult;
-export type TSourcePreprocessor<T extends TBaseModuleManifest> =
-  (sourceMonad: TSourceMonad<T>) => Promise<TSourceMonad<T>>;
-export type TModulePostprocessor<T extends TBaseModuleManifest> =
-  (compiledMonad: TCompiledMonad<T>) => TProcessorResult;
+export type TSourcePreprocessor<T extends TBaseModuleManifest> = (
+  sourceMonad: TSourceMonad<T>
+) => Promise<TSourceMonad<T>>;
+export type TModulePostprocessor<T extends TBaseModuleManifest> = (
+  compiledMonad: TCompiledMonad<T>
+) => TProcessorResult;
 
 export type TMltConfig<TUserManifest extends TBaseModuleManifest> = {
   dependencies: TModuleDependencies;
