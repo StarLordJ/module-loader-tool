@@ -20,10 +20,11 @@ function defaultCompileFn<TUserManifest extends TBaseModuleManifest>(
   };
 
   try {
+    const $$manifestName: string = sourceMonad.manifest.name;
     // tslint:disable-next-line
     eval(sourceCode);
   } catch (ex) {
-    return Promise.reject(Error(`Cant compile module "${manifest.name}": ${ ex.message }`));
+    return Promise.reject(Error(`Cant compile module "${manifest.name}": ${ex.message}`));
   }
 
   return Promise.resolve(module);
@@ -57,17 +58,17 @@ export class MLTCompiler<TUserManifest extends TBaseModuleManifest> {
       });
     }
 
-    return this.compileFn(sourceMonad, dependenciesManager).catch(
-      (error: Error) => {
+    return this.compileFn(sourceMonad, dependenciesManager)
+      .catch((error: Error) => {
         console.error('Cant compile bundle', sourceMonad.manifest, 'error:', error);
         this.notCompiledBundles.push(sourceMonad.manifest.name);
-      }
-    ).then(
-      // @ts-ignore
-      (module: TCompiledModule<TModule> | void) => ({
-        manifest: sourceMonad.manifest,
-        module
       })
-    );
+      .then(
+        // @ts-ignore
+        (module: TCompiledModule<TModule> | void) => ({
+          manifest: sourceMonad.manifest,
+          module
+        })
+      );
   };
 }
