@@ -1,7 +1,11 @@
 import { MLTBundlesManager } from './bundles-manager';
+import { MLTCompiler } from './compiler';
 import { MLTConfig } from './config';
 import { MLTCore } from './core';
+import { MLTDependenciesManager } from './dependencies-manager';
+import { MLTLazyManager } from './lazy-manager';
 import { MLTProcessorsManager } from './processors-manager';
+import { MLTSourceLoader } from './source-loader';
 import {
   ModuleLoadStrategy,
   TBaseModuleManifest,
@@ -16,11 +20,32 @@ import { combineModuleAndRootManifest, extractRawManifest } from './utils';
 export class ModuleLoaderTool<TUserManifest extends TBaseModuleManifest> {
   private readonly config: MLTConfig<TUserManifest> = new MLTConfig();
   private readonly bundlesManager: MLTBundlesManager<TUserManifest> = new MLTBundlesManager(this.config);
-  private readonly core: MLTCore<TUserManifest> = new MLTCore(this.config);
+  private readonly sourceLoader: MLTSourceLoader<TUserManifest>;
+  private readonly compiler: MLTCompiler<TUserManifest>;
+  private readonly dependenciesManager: MLTDependenciesManager;
+  private readonly lazyManager: MLTLazyManager<TUserManifest>;
+  private readonly core: MLTCore<TUserManifest>;
 
   configure: (config: TMltConfig<TUserManifest>) => void = this.config.configure.bind(this.config);
   updateConfig: (config: Partial<TMltConfig<TUserManifest>>) => void = this.config.updateConfig.bind(this.config);
   processorsManager: MLTProcessorsManager<TUserManifest> = this.config.processorsManager;
+
+  constructor() {
+    this.sourceLoader = new MLTSourceLoader(this.config);
+    this.dependenciesManager = new MLTDependenciesManager(this.config);
+    this.compiler = new MLTCompiler();
+    this.core = new MLTCore({
+      compiler: this.compiler,
+      config: this.config,
+      dependenciesManager: this.dependenciesManager,
+      loader: this.sourceLoader
+    });
+    this.lazyManager = new MLTLazyManager({
+      bundlesManager: this.bundlesManager,
+      config: this.config,
+      sourceLoader: this.sourceLoader
+    });
+  }
 
   searchBundleManifest(name: string): TSearchModuleResult<TUserManifest> {
     return this.bundlesManager.searchBundleManifest(name);
@@ -68,6 +93,7 @@ export class ModuleLoaderTool<TUserManifest extends TBaseModuleManifest> {
       .loadRootManifest()
       .then((bundlesList: Array<TUserManifest>) => bundlesList.filter(filterFn ? filterFn : (): boolean => true))
       .then((filteredBundlesList: Array<TUserManifest>) => this.bundlesManager.setBundlesList(filteredBundlesList))
+      .then(() => this.lazyManager.init())
       .then(() => this.loadBlockBundles());
   }
 
@@ -112,6 +138,9 @@ export class ModuleLoaderTool<TUserManifest extends TBaseModuleManifest> {
 
   /**
    * Ручка, которую стоит дернуть при готовности грузить lazy-модули
+   * Возвращает ответ - есть еще на очереди ленивые модули или уже кончились
    */
-  reportReadyToLazy(): void {}
+  reportReadyToLazy(): boolean {
+    return this.lazyManager.loadMoreLazyModules();
+  }
 }

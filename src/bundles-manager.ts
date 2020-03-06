@@ -7,6 +7,8 @@ import {
 } from './types';
 import { combineModuleAndRootManifest } from './utils';
 
+const MODULE_CHILD_LENGTH = 2;
+
 export class MLTBundlesManager<TUserManifest extends TBaseModuleManifest> {
   private get rootManifestUrl(): string {
     return this.config.configObj.rootManifestUrl;
@@ -60,7 +62,7 @@ export class MLTBundlesManager<TUserManifest extends TBaseModuleManifest> {
   // tslint:disable-next-line:cyclomatic-complexity
   searchBundleManifest(name: string): TSearchModuleResult<TUserManifest> {
     // Сперва поищем модуль, если такой найдется. Здесь нам все равно есть ли точка в имени модуля -
-    // на корневом уровне лежат только модули
+    // на корневом уровне лежат только микросервисы и модули, которые уже сплющены
     const rootManifest = this.manifests.find((bundle: TUserManifest) => bundle.name === name);
     if (rootManifest) {
       return {
@@ -79,11 +81,10 @@ export class MLTBundlesManager<TUserManifest extends TBaseModuleManifest> {
     }
 
     const nameParts = name.split('.');
-    // const [serviceName, moduleName, childName] = nameParts;
 
     // Одна точка в названии - чайлд микросервиса
     // Две точки - чайлд модуля
-    if (nameParts.length === 2) {
+    if (nameParts.length === MODULE_CHILD_LENGTH) {
       const [parentModuleName, childName] = nameParts;
       const childManifest = this.manifests.find(
         (bundle: TUserManifest) => bundle.name === parentModuleName

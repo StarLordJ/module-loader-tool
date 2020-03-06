@@ -31,11 +31,12 @@ export enum ModuleLoadStrategy {
 export enum ModuleSearchType {
   /**
    * Или корневой модуль, или дочерний модуль - они равны перед системой
+   * У модуля может быть функция start, может быть getComponentFn
    */
   MODULE = 'module',
 
   /**
-   * Ребенок, вкомпилирован в сам модуль
+   * Ребенок, вкомпилирован в сам модуль. Ребенок - это просто функция, с какой-то метаинформацией в манифесте
    */
   CHILD = 'child'
 }
@@ -206,4 +207,9 @@ export type TMltConfig<TUserManifest extends TBaseModuleManifest> = {
   loadSourceFn?: TLoadSourceFn;
 
   compileFn?: TCompileFn<TUserManifest>;
+
+  /**
+   * Limit how much bundles should be loaded by lazyLoader when system in IDLE. Default - 2
+   */
+  lazyLoaderLimit?: number;
 };

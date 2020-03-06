@@ -9,14 +9,23 @@ import { TBaseModuleManifest, TCompiledMonad, TSearchModuleResult, TSourceMonad 
  */
 export class MLTCore<TUserManifest extends TBaseModuleManifest> {
   private cache: Record<string, Promise<TCompiledMonad<TUserManifest>>> = {};
-  private readonly loader: MLTSourceLoader<TUserManifest>;
+  private readonly config: MLTConfig<TUserManifest>;
+  private readonly sourceLoader: MLTSourceLoader<TUserManifest>;
   private readonly compiler: MLTCompiler<TUserManifest>;
   private readonly dependenciesManager: MLTDependenciesManager;
 
-  constructor(private config: MLTConfig<TUserManifest>) {
-    this.loader = new MLTSourceLoader(this.config);
-    this.dependenciesManager = new MLTDependenciesManager(this.config);
-    this.compiler = new MLTCompiler();
+  constructor(
+    dependencies: {
+      compiler: MLTCompiler<TUserManifest>,
+      config: MLTConfig<TUserManifest>,
+      dependenciesManager: MLTDependenciesManager,
+      loader: MLTSourceLoader<TUserManifest>
+    }
+  ) {
+    this.config = dependencies.config;
+    this.sourceLoader = dependencies.loader;
+    this.dependenciesManager = dependencies.dependenciesManager;
+    this.compiler = dependencies.compiler;
   }
 
   hasCompiledBundle(moduleSearchResult: TSearchModuleResult<TUserManifest>): boolean {
@@ -65,7 +74,7 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
     if (!this.cache[manifestName]) {
       this.cache[manifestName] = this.config.processorsManager
         .runPreprocessors(manifest)
-        .then(() => this.loader.loadSource(manifest))
+        .then(() => this.sourceLoader.loadSource(manifest))
         .then((sourceMonad: TSourceMonad<TUserManifest>) =>
           this.config.processorsManager.runSourcePreprocessors(sourceMonad)
         )
@@ -91,7 +100,9 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
    * @param manifests
    */
   bulkLoadBundles(manifests: Array<TUserManifest>): Promise<void> {
-    return Promise.all(manifests.map((manifest: TUserManifest) => this.loadAndCompileBundle(manifest)))
+    return Promise.all(
+      manifests.map((manifest: TUserManifest) => this.loadAndCompileBundle(manifest))
+    )
       .then(() => {})
       .catch((error: Error) => {
         console.error('Это случилось, ошибка при bulkLoadBundles где-то выше', error);
