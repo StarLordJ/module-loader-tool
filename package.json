@@ -52,8 +52,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "lint-staged",
-      "pre-push": "npm run style && npm test -- --bail --onlyChanged"
+      "pre-commit": "lint-staged"
     }
   },
   "lint-staged": {
