@@ -1,6 +1,6 @@
 {
   "name": "module-loader-tool",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "Module loader tool for dynamic load UMD modules",
   "keywords": [
     "umd",
@@ -52,7 +52,6 @@
   },
   "husky": {
     "hooks": {
-      "commit-msg": "commitlint --config config/commitlint.config.js -E HUSKY_GIT_PARAMS",
       "pre-commit": "lint-staged",
       "pre-push": "npm run style && npm test -- --bail --onlyChanged"
     }
@@ -68,8 +67,7 @@
     ]
   },
   "peerDependencies": {
-    "tslib": ">=1.9.0",
-    "rxjs": "^6.3.3"
+    "tslib": ">=1.9.0"
   },
   "devDependencies": {
     "@commitlint/cli": "7.2.1",
