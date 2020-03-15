@@ -35,6 +35,7 @@ export class ModuleLoaderTool<TUserManifest extends TBaseModuleManifest> {
     this.dependenciesManager = new MLTDependenciesManager(this.config);
     this.compiler = new MLTCompiler();
     this.core = new MLTCore({
+      bundlesManager: this.bundlesManager,
       compiler: this.compiler,
       config: this.config,
       dependenciesManager: this.dependenciesManager,

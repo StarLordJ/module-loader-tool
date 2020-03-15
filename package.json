@@ -1,6 +1,6 @@
 {
   "name": "module-loader-tool",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Module loader tool for dynamic load UMD modules",
   "keywords": [
     "umd",
