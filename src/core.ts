@@ -82,11 +82,12 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
     this.executePrefetch(manifest.prefetchFn);
     this.preloadModules(manifest.preloadModules);
 
-    return this.loadBlockBundles().then(() => this.internalLoadAndCompile(manifest));
+    return this.loadBlockModules(manifest.blockModules).then(() => this.internalLoadAndCompile(manifest));
   }
 
   /**
-   * Чистая функция, которая запустит prefetch-запрос
+   * Чистая функция, которая запустит prefetch-запрос.
+   * Если модуль, откуда вызывается префеч не загружен - он будет загружен и потянет за собой все свои зависимости
    */
   private executePrefetch(prefetchConfig: TPrefetchConfig | void): void {
     if (!prefetchConfig) {
@@ -126,6 +127,9 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
     );
   }
 
+  /**
+   * Метод начнет грузить все модули, которые указаны к предзагрузке
+   */
   private preloadModules(modulesToPreload: Array<string> | void): void {
     if (!modulesToPreload || !modulesToPreload.length) {
       return;
@@ -143,7 +147,10 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
     });
   }
 
-  private loadBlockBundles(blockModules: Array<string> | void): Promise<void> {
+  /**
+   * Метод загрузит и скомпилирует все модули, помеченные
+   */
+  private loadBlockModules(blockModules: Array<string> | void): Promise<void> {
     if (!blockModules || !blockModules.length) {
       return Promise.resolve();
     }
