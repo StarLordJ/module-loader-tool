@@ -76,6 +76,11 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
         )
       );
     }
+
+    if (module.exports && module.exports.getUnknownResolver) {
+      const resolver = module.exports.getUnknownResolver();
+      this.dependenciesManager.installUnknownDependencyResolver(resolver, compiledBundle.manifest);
+    }
   }
 
   loadAndCompileBundle(manifest: TUserManifest): Promise<TCompiledMonad<TUserManifest>> {

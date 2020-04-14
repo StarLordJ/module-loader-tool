@@ -96,6 +96,11 @@ export type TBaseModuleManifest<TUserAddition = {}, TChild = {}> = {
   name: string;
 
   /**
+   * Required. Is microservice enabled?
+   */
+  enabled: boolean;
+
+  /**
    * Required. Choose load strategy
    */
   loadStrategy: ModuleLoadStrategy;
@@ -167,6 +172,7 @@ export type TCompiledModule<T = {}> = {
   exports: {
     start?: () => void;
     getModuleDependencies?: () => object;
+    getUnknownResolver?: () => TUnknownDependencyResolver;
     // tslint:disable-next-line:no-any
     [key: string]: any;
   } & T;

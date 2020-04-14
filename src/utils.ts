@@ -12,20 +12,9 @@ export function combineModuleAndRootManifest<TUserManifest extends TBaseModuleMa
   rootManifest: TUserManifest,
   module: TUserManifest
 ): TUserManifest {
-  const rawManifest = { ...extractRawManifest(rootManifest) };
-  const rawManifestName = rawManifest.name;
-
-  delete rawManifest.fileName;
-  delete rawManifest.childs;
-  delete rawManifest.loadStrategy;
-  delete rawManifest.name;
-
   return {
-    // Вот тут гон, надо исключить из rootManifest только loadStrategy и fileName
-    // А вот всякую остальную блуду надо оставить - типа enabled, потому что она может распространяться на модули
-    // Если не хотим, чтоб распространилась - модуль должен её оверрайдить
-    ...rawManifest,
     ...module,
-    name: `${rawManifestName}.${module.name}`
+    enabled: rootManifest.enabled,
+    name: `${rootManifest.name}.${module.name}`
   };
 }

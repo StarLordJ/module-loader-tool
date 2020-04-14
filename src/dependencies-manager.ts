@@ -9,7 +9,14 @@ function throwDependencyAlreadyInstalled(dependencyName: string): never {
   throw new Error(`Dependency "${dependencyName}" already installed. Check your code logic`);
 }
 
+function throwInvalidResolver(manifest: TBaseModuleManifest): never {
+  throw new Error(`Module "${manifest.name}" tried to install invalid dependency resolver.`);
+}
+
 export class MLTDependenciesManager {
+  private _isDefaultUnknownResolverInstalled: boolean = false;
+  private _unknownResolvers: Array<TUnknownDependencyResolver> = [];
+
   private get dependencies(): TModuleDependencies {
     return this.config.configObj.dependencies;
   }
@@ -18,12 +25,30 @@ export class MLTDependenciesManager {
     this.config.configObj.dependencies = d;
   }
 
-  private get unknownResolver(): TUnknownDependencyResolver | void {
-    return this.config.configObj.unknownDependencyResolver;
-  }
-
   // tslint:disable-next-line:no-any
   constructor(private config: MLTConfig<any>) {}
+
+  private ensureDefaultUnknownDependencyResolverInstalled(): void {
+    if (this._isDefaultUnknownResolverInstalled) {
+      return;
+    }
+    if (this.config.configObj.unknownDependencyResolver) {
+      this._unknownResolvers.push(this.config.configObj.unknownDependencyResolver);
+    }
+    this._isDefaultUnknownResolverInstalled = true;
+  }
+
+  private resolveUnknownDependency(dependencyName: string, manifest: TBaseModuleManifest): object | void {
+    this.ensureDefaultUnknownDependencyResolverInstalled();
+    // tslint:disable-next-line
+    for (let i = 0; i < this._unknownResolvers.length; i += 1) {
+      const resolver = this._unknownResolvers[i];
+      const dependency = resolver(dependencyName, manifest);
+      if (dependency) {
+        return dependency;
+      }
+    }
+  }
 
   // tslint:disable-next-line:no-any
   installDependency = (dependencyName: string, module: any, force: boolean = false): this => {
@@ -43,6 +68,15 @@ export class MLTDependenciesManager {
     return this;
   };
 
+  installUnknownDependencyResolver = (resolver: TUnknownDependencyResolver, manifest: TBaseModuleManifest): this => {
+    if (!resolver) {
+      throwInvalidResolver(manifest);
+    }
+    this._unknownResolvers.push(resolver);
+
+    return this;
+  };
+
   /**
    * Получить зависимость из функции require
    * @internal
@@ -52,11 +86,7 @@ export class MLTDependenciesManager {
       return this.dependencies[dependencyName];
     }
 
-    if (!this.unknownResolver) {
-      return throwNoDependencyInstalled(dependencyName);
-    }
-
-    const dependency = this.unknownResolver(dependencyName, manifest);
+    const dependency = this.resolveUnknownDependency(dependencyName, manifest);
 
     if (dependency) {
       return dependency;
