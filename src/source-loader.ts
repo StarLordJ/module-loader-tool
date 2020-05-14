@@ -1,14 +1,20 @@
 import { MLTConfig } from './config';
 import { TBaseModuleManifest, TFormatUrlFn, TLoadSourceFn, TSourceMonad } from './types';
 
-const defaultLoadSourceFn: TLoadSourceFn = (url: string): Promise<string> => {
-  return fetch(url).then((response: Response) => {
-    if (!response.ok) {
-      throw new Error(`Cant load bundle, http error ${response.status}`);
-    }
+const INTERNET_CONNECTION_LOST_MESSAGE = 'Internet Connection is lost';
 
-    return response.text();
-  });
+const defaultLoadSourceFn: TLoadSourceFn = (url: string): Promise<string> => {
+  return fetch(url)
+    .then((response: Response) => {
+      if (!response.ok) {
+        throw new Error(`Cant load bundle, http error ${response.status}`);
+      }
+
+      return response.text();
+    })
+    .catch(() => {
+      throw new Error(INTERNET_CONNECTION_LOST_MESSAGE);
+    });
 };
 
 export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
@@ -21,7 +27,6 @@ export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
   }
 
   private notLoadedManifests: Array<string> = [];
-  private loadingCache: Record<string, Promise<TSourceMonad<TUserManifest>>> = {};
 
   // tslint:disable-next-line:no-any
   constructor(private config: MLTConfig<any>) {}
@@ -42,24 +47,19 @@ export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
 
     const url = this.formatUrlFn(manifest);
 
-    // Кажется на этом уровне кэш лишний - в core уже кешируется же
-    if (!this.loadingCache[url]) {
-      this.loadingCache[url] = this.loadSourceFn(url).catch(
-        (error: Error) => {
-          console.error('Cant load source for manifest', manifest);
-          console.error('Error: ', error);
+    return this.loadSourceFn(url)
+      .catch((error: Error) => {
+        console.error('Cant load source for manifest', manifest);
+        console.error('Error: ', error);
+        if (error.message !== INTERNET_CONNECTION_LOST_MESSAGE) {
           this.notLoadedManifests.push(manifest.name);
         }
-      ).then(
-        (moduleSource: string | void) => {
-          return this.config.processorsManager.runSourcePreprocessors({
-            manifest,
-            source: moduleSource
-          });
-        }
-      );
-    }
-
-    return this.loadingCache[url];
+      })
+      .then((moduleSource: string | void) => {
+        return this.config.processorsManager.runSourcePreprocessors({
+          manifest,
+          source: moduleSource
+        });
+      });
   };
 }
