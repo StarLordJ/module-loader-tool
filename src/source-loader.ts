@@ -60,14 +60,14 @@ export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
 
         return error;
       })
-      .then((moduleSource: string | Error) => {
+      .then((moduleSourceOrError: string | Error) => {
         return this.config.processorsManager
           .runSourcePreprocessors({
             manifest,
-            source: moduleSource instanceof Error ? void 0 : moduleSource
+            source: moduleSourceOrError instanceof Error ? void 0 : moduleSourceOrError
           })
           .then((sourceMonad: TSourceMonad<TUserManifest>) => ({
-            sourceLoadError: moduleSource instanceof Error ? moduleSource : void 0,
+            sourceLoadError: moduleSourceOrError instanceof Error ? moduleSourceOrError : void 0,
             sourceMonad
           }));
       });
