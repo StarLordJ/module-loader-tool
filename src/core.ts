@@ -178,27 +178,33 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
 
   private internalLoadAndCompile(manifest: TUserManifest): Promise<TCompiledMonad<TUserManifest>> {
     const manifestName = manifest.name;
-    if (!this.cache[manifestName]) {
-      this.cache[manifestName] = this.config.processorsManager
-        .runPreprocessors(manifest)
-        .then(() => this.sourceLoader.loadSource(manifest))
-        .then((sourceMonad: TSourceMonad<TUserManifest>) =>
-          this.config.processorsManager.runSourcePreprocessors(sourceMonad)
-        )
-        .then((sourceMonad: TSourceMonad<TUserManifest>) =>
-          this.compiler.compile(sourceMonad, this.dependenciesManager)
-        )
-        .then(
-          // @ts-ignore
-          (compiledMonad: TCompiledMonad<TUserManifest>) => {
-            this.startCompiledBundle(compiledMonad);
-
-            return this.config.processorsManager.runPostprocessors(compiledMonad).then(() => compiledMonad);
-          }
-        );
+    if (this.cache[manifestName]) {
+      return this.cache[manifestName].then((compiledMonad: TCompiledMonad<TUserManifest>) =>
+        compiledMonad.module === void 0
+          ? (this.cache[manifestName] = this.loadAndCompile(manifest))
+          : this.cache[manifestName]
+      );
+    } else {
+      return (this.cache[manifestName] = this.loadAndCompile(manifest));
     }
+  }
 
-    return this.cache[manifestName];
+  private loadAndCompile(manifest: TUserManifest): Promise<TCompiledMonad<TUserManifest>> {
+    return this.config.processorsManager
+      .runPreprocessors(manifest)
+      .then(() => this.sourceLoader.loadSource(manifest))
+      .then((sourceMonad: TSourceMonad<TUserManifest>) =>
+        this.config.processorsManager.runSourcePreprocessors(sourceMonad)
+      )
+      .then((sourceMonad: TSourceMonad<TUserManifest>) => this.compiler.compile(sourceMonad, this.dependenciesManager))
+      .then(
+        // @ts-ignore
+        (compiledMonad: TCompiledMonad<TUserManifest>) => {
+          this.startCompiledBundle(compiledMonad);
+
+          return this.config.processorsManager.runPostprocessors(compiledMonad).then(() => compiledMonad);
+        }
+      );
   }
 
   /**
