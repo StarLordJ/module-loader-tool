@@ -9,6 +9,7 @@ import {
   TCompiledMonad,
   TPrefetchConfig,
   TSearchModuleResult,
+  TSourceLoaderResult,
   TSourceMonad
 } from './types';
 
@@ -17,6 +18,7 @@ import {
  */
 export class MLTCore<TUserManifest extends TBaseModuleManifest> {
   private cache: Record<string, Promise<TCompiledMonad<TUserManifest>>> = {};
+  private errorCache: Record<string, Error> = {};
   private readonly bundlesManager: MLTBundlesManager<TUserManifest>;
   private readonly config: MLTConfig<TUserManifest>;
   private readonly sourceLoader: MLTSourceLoader<TUserManifest>;
@@ -35,6 +37,10 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
     this.sourceLoader = dependencies.loader;
     this.dependenciesManager = dependencies.dependenciesManager;
     this.compiler = dependencies.compiler;
+  }
+
+  getBundleLoadingError(manifest: TUserManifest): Error | void {
+    return this.errorCache[manifest.name];
   }
 
   hasCompiledBundle(moduleSearchResult: TSearchModuleResult<TUserManifest>): boolean {
@@ -193,9 +199,13 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
     return this.config.processorsManager
       .runPreprocessors(manifest)
       .then(() => this.sourceLoader.loadSource(manifest))
-      .then((sourceMonad: TSourceMonad<TUserManifest>) =>
-        this.config.processorsManager.runSourcePreprocessors(sourceMonad)
-      )
+      .then((sourceLoaderResult: TSourceLoaderResult<TUserManifest>) => {
+        if (sourceLoaderResult.sourceLoadError) {
+          this.errorCache[manifest.name] = sourceLoaderResult.sourceLoadError;
+        }
+
+        return this.config.processorsManager.runSourcePreprocessors(sourceLoaderResult.sourceMonad);
+      })
       .then((sourceMonad: TSourceMonad<TUserManifest>) => this.compiler.compile(sourceMonad, this.dependenciesManager))
       .then(
         // @ts-ignore

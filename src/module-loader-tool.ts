@@ -48,6 +48,10 @@ export class ModuleLoaderTool<TUserManifest extends TBaseModuleManifest> {
     });
   }
 
+  getBundleLoadingError(manifest: TUserManifest): Error | void {
+    return this.core.getBundleLoadingError(manifest);
+  }
+
   searchBundleManifest(name: string): TSearchModuleResult<TUserManifest> {
     return this.bundlesManager.searchBundleManifest(name);
   }

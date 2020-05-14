@@ -219,3 +219,8 @@ export type TMltConfig<TUserManifest extends TBaseModuleManifest> = {
    */
   lazyLoaderLimit?: number;
 };
+
+export type TSourceLoaderResult<T> = {
+  sourceLoadError: Error | void;
+  sourceMonad: TSourceMonad<T>;
+};

@@ -1,5 +1,5 @@
 import { MLTConfig } from './config';
-import { TBaseModuleManifest, TFormatUrlFn, TLoadSourceFn, TSourceMonad } from './types';
+import { TBaseModuleManifest, TFormatUrlFn, TLoadSourceFn, TSourceLoaderResult, TSourceMonad } from './types';
 
 const INTERNET_CONNECTION_LOST_MESSAGE = 'Internet Connection is lost';
 
@@ -31,7 +31,7 @@ export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
   // tslint:disable-next-line:no-any
   constructor(private config: MLTConfig<any>) {}
 
-  loadSource = (manifest: TUserManifest): Promise<TSourceMonad<TUserManifest>> => {
+  loadSource = (manifest: TUserManifest): Promise<TSourceLoaderResult<TUserManifest>> => {
     if (!this.formatUrlFn) {
       throw new Error('No formatUrlFn function provided in mlt.loader');
     }
@@ -40,8 +40,11 @@ export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
       console.error('Retry load source, but already known that url invalid', manifest);
 
       return Promise.resolve({
-        manifest,
-        source: void 0
+        sourceLoadError: void 0,
+        sourceMonad: {
+          manifest,
+          source: void 0
+        }
       });
     }
 
@@ -54,12 +57,19 @@ export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
         if (error.message !== INTERNET_CONNECTION_LOST_MESSAGE) {
           this.notLoadedManifests.push(manifest.name);
         }
+
+        return error;
       })
-      .then((moduleSource: string | void) => {
-        return this.config.processorsManager.runSourcePreprocessors({
-          manifest,
-          source: moduleSource
-        });
+      .then((moduleSource: string | Error) => {
+        return this.config.processorsManager
+          .runSourcePreprocessors({
+            manifest,
+            source: moduleSource instanceof Error ? void 0 : moduleSource
+          })
+          .then((sourceMonad: TSourceMonad<TUserManifest>) => ({
+            sourceLoadError: moduleSource instanceof Error ? moduleSource : void 0,
+            sourceMonad
+          }));
       });
   };
 }
