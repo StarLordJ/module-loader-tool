@@ -26,6 +26,15 @@ export enum ModuleLoadStrategy {
 }
 
 /**
+ * Тип ошибки при работе с модулем
+ */
+export enum ErrorTypes {
+  INTERNET_CONNECTION_ERROR = 'internet-connection-error',
+  MODULE_LOADING_ERROR = 'module-loading-error',
+  MODULE_COMPILE_ERROR = 'module-compile-error'
+}
+
+/**
  * Тип подмодуля
  */
 export enum ModuleSearchType {
@@ -220,7 +229,17 @@ export type TMltConfig<TUserManifest extends TBaseModuleManifest> = {
   lazyLoaderLimit?: number;
 };
 
-export type TSourceLoaderResult<T> = {
-  sourceLoadError: Error | void;
+export type TMLTProcessError = {
+  type: ErrorTypes;
+  error: Error;
+};
+
+export type TSourceLoadingResult<T> = {
+  sourceLoadingError: TMLTProcessError | void;
   sourceMonad: TSourceMonad<T>;
+};
+
+export type TSourceCompilingResult<T> = {
+  sourceCompilingError: TMLTProcessError | void;
+  compiledMonad: T;
 };

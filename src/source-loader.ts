@@ -1,5 +1,12 @@
 import { MLTConfig } from './config';
-import { TBaseModuleManifest, TFormatUrlFn, TLoadSourceFn, TSourceLoaderResult, TSourceMonad } from './types';
+import {
+  ErrorTypes,
+  TBaseModuleManifest,
+  TFormatUrlFn,
+  TLoadSourceFn,
+  TSourceLoadingResult,
+  TSourceMonad
+} from './types';
 
 const INTERNET_CONNECTION_LOST_MESSAGE = 'Internet Connection is lost';
 
@@ -31,7 +38,7 @@ export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
   // tslint:disable-next-line:no-any
   constructor(private config: MLTConfig<any>) {}
 
-  loadSource = (manifest: TUserManifest): Promise<TSourceLoaderResult<TUserManifest>> => {
+  loadSource = (manifest: TUserManifest): Promise<TSourceLoadingResult<TUserManifest>> => {
     if (!this.formatUrlFn) {
       throw new Error('No formatUrlFn function provided in mlt.loader');
     }
@@ -40,7 +47,7 @@ export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
       console.error('Retry load source, but already known that url invalid', manifest);
 
       return Promise.resolve({
-        sourceLoadError: void 0,
+        sourceLoadingError: void 0,
         sourceMonad: {
           manifest,
           source: void 0
@@ -60,14 +67,25 @@ export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
 
         return error;
       })
-      .then((moduleSourceOrError: string | Error) => {
+      .then((moduleSourceOrError: string | Error | void) => {
+        const error =
+          moduleSourceOrError instanceof Error
+            ? {
+                error: moduleSourceOrError,
+                type:
+                  moduleSourceOrError.message === INTERNET_CONNECTION_LOST_MESSAGE
+                    ? ErrorTypes.INTERNET_CONNECTION_ERROR
+                    : ErrorTypes.MODULE_LOADING_ERROR
+              }
+            : void 0;
+
         return this.config.processorsManager
           .runSourcePreprocessors({
             manifest,
             source: moduleSourceOrError instanceof Error ? void 0 : moduleSourceOrError
           })
           .then((sourceMonad: TSourceMonad<TUserManifest>) => ({
-            sourceLoadError: moduleSourceOrError instanceof Error ? moduleSourceOrError : void 0,
+            sourceLoadingError: error,
             sourceMonad
           }));
       });
