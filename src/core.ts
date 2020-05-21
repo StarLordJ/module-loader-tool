@@ -4,11 +4,15 @@ import { MLTConfig } from './config';
 import { MLTDependenciesManager } from './dependencies-manager';
 import { MLTSourceLoader } from './source-loader';
 import {
+  ErrorTypes,
   ModuleSearchType,
   TBaseModuleManifest,
   TCompiledMonad,
+  TMLTProcessError,
   TPrefetchConfig,
   TSearchModuleResult,
+  TSourceCompilingResult,
+  TSourceLoadingResult,
   TSourceMonad
 } from './types';
 
@@ -17,6 +21,7 @@ import {
  */
 export class MLTCore<TUserManifest extends TBaseModuleManifest> {
   private cache: Record<string, Promise<TCompiledMonad<TUserManifest>>> = {};
+  private errorCache: Record<string, TMLTProcessError> = {};
   private readonly bundlesManager: MLTBundlesManager<TUserManifest>;
   private readonly config: MLTConfig<TUserManifest>;
   private readonly sourceLoader: MLTSourceLoader<TUserManifest>;
@@ -35,6 +40,10 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
     this.sourceLoader = dependencies.loader;
     this.dependenciesManager = dependencies.dependenciesManager;
     this.compiler = dependencies.compiler;
+  }
+
+  getBundleLoadingError(manifest: TUserManifest): TMLTProcessError | void {
+    return this.errorCache[manifest.name];
   }
 
   hasCompiledBundle(moduleSearchResult: TSearchModuleResult<TUserManifest>): boolean {
@@ -87,7 +96,7 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
     this.executePrefetch(manifest.prefetchFn);
     this.preloadModules(manifest.preloadModules);
 
-    return this.loadBlockModules(manifest.blockModules).then(() => this.internalLoadAndCompile(manifest));
+    return this.loadBlockModules(manifest.blockModules).then(() => this.internalMakeLoadingCache(manifest));
   }
 
   /**
@@ -114,7 +123,7 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
       return;
     }
 
-    this.internalLoadAndCompile(prefetchManifest.manifest).then(
+    this.internalMakeLoadingCache(prefetchManifest.manifest).then(
       // tslint:disable-next-line
       ({ module: compiledModule }: TCompiledMonad<any>) => {
         if (!compiledModule) {
@@ -148,7 +157,7 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
         return;
       }
 
-      this.internalLoadAndCompile(searchResult.manifest);
+      this.internalMakeLoadingCache(searchResult.manifest);
     });
   }
 
@@ -170,35 +179,58 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
             return;
           }
 
-          return this.internalLoadAndCompile(searchResult.manifest);
+          return this.internalMakeLoadingCache(searchResult.manifest);
         })
         .filter((p: Promise<unknown> | void) => !!p)
     ).then(() => void 0);
   }
 
-  private internalLoadAndCompile(manifest: TUserManifest): Promise<TCompiledMonad<TUserManifest>> {
+  /**
+   * Метод кеширует скомпиленный модуль.
+   * Если при обращении видит, что нужый модуль есть в кеше, но он не загрузился,
+   * пытается повторно его загрузить и скомпилировать.
+   */
+  private internalMakeLoadingCache(manifest: TUserManifest): Promise<TCompiledMonad<TUserManifest>> {
     const manifestName = manifest.name;
-    if (!this.cache[manifestName]) {
-      this.cache[manifestName] = this.config.processorsManager
-        .runPreprocessors(manifest)
-        .then(() => this.sourceLoader.loadSource(manifest))
-        .then((sourceMonad: TSourceMonad<TUserManifest>) =>
-          this.config.processorsManager.runSourcePreprocessors(sourceMonad)
-        )
-        .then((sourceMonad: TSourceMonad<TUserManifest>) =>
-          this.compiler.compile(sourceMonad, this.dependenciesManager)
-        )
-        .then(
-          // @ts-ignore
-          (compiledMonad: TCompiledMonad<TUserManifest>) => {
-            this.startCompiledBundle(compiledMonad);
 
-            return this.config.processorsManager.runPostprocessors(compiledMonad).then(() => compiledMonad);
-          }
-        );
+    if (
+      !this.cache[manifestName] ||
+      (this.cache[manifestName] &&
+        this.errorCache[manifestName] &&
+        this.errorCache[manifestName].type !== ErrorTypes.MODULE_COMPILE_ERROR)
+    ) {
+      this.cache[manifestName] = this.internalLoadAndCompile(manifest);
     }
 
     return this.cache[manifestName];
+  }
+
+  private internalLoadAndCompile(manifest: TUserManifest): Promise<TCompiledMonad<TUserManifest>> {
+    return this.config.processorsManager
+      .runPreprocessors(manifest)
+      .then(() => this.sourceLoader.loadSource(manifest))
+      .then((sourceLoaderResult: TSourceLoadingResult<TUserManifest>) => {
+        if (sourceLoaderResult.sourceLoadingError) {
+          this.errorCache[manifest.name] = sourceLoaderResult.sourceLoadingError;
+        }
+
+        return this.config.processorsManager.runSourcePreprocessors(sourceLoaderResult.sourceMonad);
+      })
+      .then((sourceMonad: TSourceMonad<TUserManifest>) => this.compiler.compile(sourceMonad, this.dependenciesManager))
+      .then(
+        // @ts-ignore
+        (sourceCompilerResult: TSourceCompilingResult<TCompiledMonad<TUserManifest>>) => {
+          const { compiledMonad, sourceCompilingError } = sourceCompilerResult;
+
+          this.startCompiledBundle(compiledMonad);
+
+          if (sourceCompilingError) {
+            this.errorCache[manifest.name] = sourceCompilingError;
+          }
+
+          return this.config.processorsManager.runPostprocessors(compiledMonad).then(() => compiledMonad);
+        }
+      );
   }
 
   /**

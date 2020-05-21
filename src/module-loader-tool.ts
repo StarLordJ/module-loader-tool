@@ -12,6 +12,7 @@ import {
   TCompiledModule,
   TCompiledMonad,
   TMltConfig,
+  TMLTProcessError,
   TSearchModuleResult
 } from './types';
 import { combineModuleAndRootManifest, extractRawManifest } from './utils';
@@ -46,6 +47,10 @@ export class ModuleLoaderTool<TUserManifest extends TBaseModuleManifest> {
       config: this.config,
       sourceLoader: this.sourceLoader
     });
+  }
+
+  getBundleLoadingError(manifest: TUserManifest): TMLTProcessError | void {
+    return this.core.getBundleLoadingError(manifest);
   }
 
   searchBundleManifest(name: string): TSearchModuleResult<TUserManifest> {

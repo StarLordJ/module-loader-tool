@@ -1,5 +1,13 @@
 import { MLTDependenciesManager } from './dependencies-manager';
-import { TBaseModuleManifest, TCompiledModule, TCompiledMonad, TCompileFn, TSourceMonad } from './types';
+import {
+  ErrorTypes,
+  TBaseModuleManifest,
+  TCompiledModule,
+  TCompiledMonad,
+  TCompileFn,
+  TSourceCompilingResult,
+  TSourceMonad
+} from './types';
 
 function defaultCompileFn<TUserManifest extends TBaseModuleManifest>(
   sourceMonad: TSourceMonad<TUserManifest>,
@@ -41,11 +49,14 @@ export class MLTCompiler<TUserManifest extends TBaseModuleManifest> {
   compile = <TModule>(
     sourceMonad: TSourceMonad<TUserManifest>,
     dependenciesManager: MLTDependenciesManager
-  ): Promise<TCompiledMonad<TUserManifest, TCompiledModule<TModule>>> => {
+  ): Promise<TSourceCompilingResult<TCompiledMonad<TUserManifest, TCompiledModule<TModule>>>> => {
     if (!sourceMonad.source) {
       return Promise.resolve({
-        manifest: sourceMonad.manifest,
-        module: void 0
+        compiledMonad: {
+          manifest: sourceMonad.manifest,
+          module: void 0
+        },
+        sourceCompilingError: void 0
       });
     }
 
@@ -53,22 +64,40 @@ export class MLTCompiler<TUserManifest extends TBaseModuleManifest> {
       console.error('Retry compile source, but already known that source is invalid', sourceMonad.manifest);
 
       return Promise.resolve({
-        manifest: sourceMonad.manifest,
-        module: void 0
+        compiledMonad: {
+          manifest: sourceMonad.manifest,
+          module: void 0
+        },
+        sourceCompilingError: void 0
       });
     }
 
-    return this.compileFn(sourceMonad, dependenciesManager)
-      .catch((error: Error) => {
-        console.error('Cant compile bundle', sourceMonad.manifest, 'error:', error);
-        this.notCompiledBundles.push(sourceMonad.manifest.name);
-      })
-      .then(
-        // @ts-ignore
-        (module: TCompiledModule<TModule> | void) => ({
-          manifest: sourceMonad.manifest,
-          module
+    return (
+      this.compileFn(sourceMonad, dependenciesManager)
+        .catch((error: Error) => {
+          console.error('Cant compile bundle', sourceMonad.manifest, 'error:', error);
+          this.notCompiledBundles.push(sourceMonad.manifest.name);
+
+          return error;
         })
-      );
+        // @ts-ignore
+        .then((moduleOrError: TCompiledModule<TModule> | Error) => {
+          const error =
+            moduleOrError instanceof Error
+              ? {
+                  error: moduleOrError,
+                  type: ErrorTypes.MODULE_COMPILE_ERROR
+                }
+              : void 0;
+
+          return {
+            compiledMonad: {
+              manifest: sourceMonad.manifest,
+              module: moduleOrError instanceof Error ? void 0 : moduleOrError
+            },
+            sourceCompilingError: error
+          };
+        })
+    );
   };
 }
