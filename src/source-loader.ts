@@ -67,7 +67,7 @@ export class MLTSourceLoader<TUserManifest extends TBaseModuleManifest> {
 
         return error;
       })
-      .then((moduleSourceOrError: string | Error | void) => {
+      .then((moduleSourceOrError: string | Error) => {
         const error =
           moduleSourceOrError instanceof Error
             ? {
