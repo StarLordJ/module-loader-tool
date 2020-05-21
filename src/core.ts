@@ -205,16 +205,24 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
     return this.cache[manifestName];
   }
 
+  /**
+   * Метод пытается загрузить и скомпилировать модуль, в процессе кеширует ошибки, если они есть и
+   * удаляет их, если в следующий раз выполнится успешно
+   */
   private internalLoadAndCompile(manifest: TUserManifest): Promise<TCompiledMonad<TUserManifest>> {
     return this.config.processorsManager
       .runPreprocessors(manifest)
       .then(() => this.sourceLoader.loadSource(manifest))
       .then((sourceLoaderResult: TSourceLoadingResult<TUserManifest>) => {
-        if (sourceLoaderResult.sourceLoadingError) {
-          this.errorCache[manifest.name] = sourceLoaderResult.sourceLoadingError;
+        const { sourceMonad, sourceLoadingError } = sourceLoaderResult;
+
+        if (sourceLoadingError) {
+          this.errorCache[manifest.name] = sourceLoadingError;
+        } else if (this.errorCache[manifest.name] && sourceMonad.source) {
+          delete this.errorCache[manifest.name];
         }
 
-        return this.config.processorsManager.runSourcePreprocessors(sourceLoaderResult.sourceMonad);
+        return this.config.processorsManager.runSourcePreprocessors(sourceMonad);
       })
       .then((sourceMonad: TSourceMonad<TUserManifest>) => this.compiler.compile(sourceMonad, this.dependenciesManager))
       .then(
@@ -226,6 +234,8 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
 
           if (sourceCompilingError) {
             this.errorCache[manifest.name] = sourceCompilingError;
+          } else if (this.errorCache[manifest.name] && compiledMonad.module) {
+            delete this.errorCache[manifest.name];
           }
 
           return this.config.processorsManager.runPostprocessors(compiledMonad).then(() => compiledMonad);
