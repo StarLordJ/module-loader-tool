@@ -179,7 +179,7 @@ export class MLTCore<TUserManifest extends TBaseModuleManifest> {
             return;
           }
 
-          return this.internalMakeLoadingCache(searchResult.manifest);
+          return this.loadAndCompileBundle(searchResult.manifest);
         })
         .filter((p: Promise<unknown> | void) => !!p)
     ).then(() => void 0);
